@@ -1,4 +1,10 @@
-package com.mycompany.myproject.test.integration.java;
+package test.unit;
+
+import com.mycompany.myproject.PingVerticle;
+import org.junit.Test;
+
+import static org.junit.Assert.*;
+
 /*
  * Copyright 2013 Red Hat, Inc.
  *
@@ -16,19 +22,14 @@ package com.mycompany.myproject.test.integration.java;
  *
  * @author <a href="http://tfox.org">Tim Fox</a>
  */
+public class ExampleUnitTest {
 
-import org.vertx.java.platform.Verticle;
-import org.vertx.testtools.VertxAssert;
+  @Test
+  public void testVerticle() {
+    PingVerticle vert = new PingVerticle();
 
-public class SomeVerticle extends Verticle {
+    // Interrogate your classes directly....
 
-  public void start() {
-    VertxAssert.initialize(vertx);
-
-    // You can also assert from other verticles!!
-    VertxAssert.assertEquals("foo", "foo");
-
-    // And complete tests from other verticles!!
-    VertxAssert.testComplete();
+    assertNotNull(vert);
   }
 }

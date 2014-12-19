@@ -1,3 +1,4 @@
+package test.integration.java;
 /*
  * Copyright 2013 Red Hat, Inc.
  *
@@ -13,26 +14,21 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *
- *
- */
-
-package com.mycompany.myproject
-
-import org.vertx.groovy.platform.Verticle
-
-/*
- * This is a simple compiled Groovy verticle which receives `ping` messages on the event bus and sends back `pong`
- * replies
- *
  * @author <a href="http://tfox.org">Tim Fox</a>
  */
-class GroovyPingVerticle extends Verticle {
 
-  def start() {
+import org.vertx.java.platform.Verticle;
+import org.vertx.testtools.VertxAssert;
 
-    vertx.eventBus.registerHandler("ping-address") { message ->
-      message.reply("pong!")
-      container.logger.info("Sent back pong groovy!")
-    }
+public class SomeVerticle extends Verticle {
+
+  public void start() {
+    VertxAssert.initialize(vertx);
+
+    // You can also assert from other verticles!!
+    VertxAssert.assertEquals("foo", "foo");
+
+    // And complete tests from other verticles!!
+    VertxAssert.testComplete();
   }
 }
