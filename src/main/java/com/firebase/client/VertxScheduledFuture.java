@@ -6,15 +6,14 @@ import org.vertx.java.core.Vertx;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.RunnableScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
  * @author nhudak
  */
-public class VertxScheduledFuture implements RunnableFuture<Void>, ScheduledFuture<Void> {
+public class VertxScheduledFuture implements RunnableScheduledFuture<Void> {
   private final Vertx vertx;
   private final long delay;
   private volatile Long timer = null;
@@ -73,5 +72,9 @@ public class VertxScheduledFuture implements RunnableFuture<Void>, ScheduledFutu
   @Override public Void get( long timeout, TimeUnit unit )
     throws InterruptedException, ExecutionException, TimeoutException {
     return task.get( timeout, unit );
+  }
+
+  @Override public boolean isPeriodic() {
+    return false;
   }
 }

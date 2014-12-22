@@ -1,8 +1,8 @@
 package com.firebase.client;
 
-import com.firebase.vertx.FirebaseVerticle;
 import org.vertx.java.core.Context;
 import org.vertx.java.core.Handler;
+import org.vertx.java.platform.Verticle;
 
 import java.util.concurrent.ScheduledFuture;
 
@@ -10,26 +10,29 @@ import java.util.concurrent.ScheduledFuture;
  * @author nhudak
  */
 public class VertxConfig extends Config {
-  private final FirebaseVerticle owner;
-  private final VertxRunner runner;
-  private final Logger logger;
+  private final Verticle owner;
+  private final Context context;
+  private final org.vertx.java.core.logging.Logger logger;
 
-  public VertxConfig( FirebaseVerticle firebaseVerticle ) {
-    owner = firebaseVerticle;
-    runner = new VertxRunner();
-    logger = new VertxLogger();
-    this.setLogger( logger );
+  public VertxConfig( Verticle owner ) {
+    this.owner = owner;
+    this.context = owner.getVertx().currentContext();
+    this.logger = owner.getContainer().logger();
+    VertxRunner runner = new VertxRunner();
+    this.setLogger( new VertxLogger() );
     this.setEventTarget( runner );
     this.setRunLoop( runner );
   }
 
   private class VertxRunner implements RunLoop, EventTarget {
-    private final Context context = owner.getVertx().currentContext();
-
     @Override public void scheduleNow( final Runnable runnable ) {
       context.runOnContext( new Handler<Void>() {
-        @Override public void handle( Void event ) {
-          runnable.run();
+        @Override public void handle( Void nothing ) {
+          try {
+            runnable.run();
+          } catch ( Exception e ) {
+            logger.error( "Uncaught exception from Firebase", e );
+          }
         }
       } );
     }
@@ -45,17 +48,15 @@ public class VertxConfig extends Config {
     }
 
     @Override public void shutdown() {
-      owner.getContainer().logger().warn( "Vertx Runner asked to shut down" );
+      logger.warn( "Vertx Runner asked to shut down" );
     }
 
     @Override public void restart() {
-      owner.getContainer().logger().warn( "Vertx Runner asked to restart" );
+      logger.warn( "Vertx Runner asked to restart" );
     }
   }
 
   private class VertxLogger implements Logger {
-    private final org.vertx.java.core.logging.Logger logger = owner.getContainer().logger();
-
     @Override public void onLogMessage( Level level, String tag, String message, long timestamp ) {
       switch ( level ){
         case DEBUG:
