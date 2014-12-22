@@ -1,0 +1,4 @@
+{
+	"ref": "https://integration-test.firebaseio.com/",
+	"secret": "<firebase secret>"
+}
