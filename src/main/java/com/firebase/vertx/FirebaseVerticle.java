@@ -28,9 +28,9 @@ public class FirebaseVerticle extends Verticle {
     ref = new VertxFirebase( this, config.getString( "ref" ) );
 
     Authenticator authenticator = new Authenticator( ref, config.getValue( "auth" ) );
-    vertx.runOnContext( authenticator );
+    authenticator.runOnContext( vertx.currentContext() );
     authenticator.getFuture().setHandler( new AsyncResultHandler<AuthData>() {
-      @Override public void handle( AsyncResult<AuthData> authEvent ) {
+      @Override public void handle( AsyncResult<AuthData> event ) {
         startedResult.setResult( null );
       }
     } );
