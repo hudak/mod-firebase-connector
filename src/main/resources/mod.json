@@ -2,6 +2,7 @@
 
   // Java verticle
   "main":"com.mycompany.myproject.PingVerticle",
+  "includes": "com.darylteo.vertx~vertx-promises-java~1.2.0",
 
   // In this example we also provide various other versions of the main verticle, you can uncomment this and
   // play around:
