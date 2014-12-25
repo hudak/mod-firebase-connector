@@ -1,10 +1,10 @@
 package com.firebase.vertx;
 
+import com.darylteo.vertx.promises.java.Promise;
 import com.firebase.client.AuthData;
 import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseError;
 import org.vertx.java.core.Context;
-import org.vertx.java.core.Future;
 import org.vertx.java.core.json.JsonObject;
 
 import java.util.HashMap;
@@ -16,25 +16,25 @@ import java.util.Map;
 public class Authenticator extends AsyncTask<AuthData> {
   private final Firebase ref;
   private final Object config;
-  private Firebase.AuthResultHandler authResultHandler;
 
   public Authenticator( Firebase ref, Object config ) {
     this.ref = ref;
     this.config = config;
   }
 
-  @Override void execute( Context context, final Future<AuthData> future ) {
-    authResultHandler = new Firebase.AuthResultHandler(){
+  @Override void execute( Context context, final Promise<AuthData> future ) {
+    Firebase.AuthResultHandler authResultHandler = new Firebase.AuthResultHandler() {
       @Override public void onAuthenticated( AuthData authData ) {
-        future.setResult( authData );
+        future.fulfill( authData );
       }
+
       @Override public void onAuthenticationError( FirebaseError firebaseError ) {
-        future.setFailure( firebaseError.toException() );
+        future.reject( firebaseError.toException() );
       }
     };
 
     if ( config == null ) {
-      future.setResult( null );
+      future.fulfill( null );
     } else if ( config instanceof JsonObject ) {
       JsonObject authMap = (JsonObject) config;
       if (authMap.containsField( "email" ) && authMap.containsField( "password" )) {
@@ -49,7 +49,7 @@ public class Authenticator extends AsyncTask<AuthData> {
         options.put( "access_token", authMap.getString( "access_token", options.get( "access_token" ) ) );
         ref.authWithOAuthToken( provider, options, authResultHandler );
       } else {
-        future.setFailure( new RuntimeException( "Unable to authenticate with " + authMap ) );
+        future.reject( new RuntimeException( "Unable to authenticate with " + authMap ) );
       }
     } else if ( config instanceof String) {
       String authString = (String) config;
@@ -59,7 +59,7 @@ public class Authenticator extends AsyncTask<AuthData> {
         ref.authWithCustomToken( authString, authResultHandler );
       }
     } else {
-      future.setFailure( new RuntimeException( "Unable to authenticate with " + config ) );
+      future.reject( new RuntimeException( "Unable to authenticate with " + config ) );
     }
   }
 }

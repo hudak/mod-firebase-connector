@@ -1,10 +1,9 @@
 package com.firebase.vertx;
 
+import com.darylteo.vertx.promises.java.functions.PromiseAction;
 import com.firebase.client.AuthData;
 import com.firebase.client.Firebase;
 import com.firebase.client.VertxFirebase;
-import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
 import org.vertx.java.core.Future;
 import org.vertx.java.core.VertxException;
 import org.vertx.java.core.json.JsonObject;
@@ -27,12 +26,16 @@ public class FirebaseVerticle extends Verticle {
 
     ref = new VertxFirebase( this, config.getString( "ref" ) );
 
-    Authenticator authenticator = new Authenticator( ref, config.getValue( "auth" ) );
-    authenticator.runOnContext( vertx.currentContext() );
-    authenticator.getFuture().setHandler( new AsyncResultHandler<AuthData>() {
-      @Override public void handle( AsyncResult<AuthData> event ) {
-        startedResult.setResult( null );
-      }
-    } );
+    new Authenticator( ref, config.getValue( "auth" ) ).
+      runOnContext( vertx.currentContext() ).
+      then( new PromiseAction<AuthData>() {
+        @Override public void call( AuthData authData ) {
+          startedResult.setResult( null );
+        }
+      }, new PromiseAction<Exception>() {
+        @Override public void call( Exception e ) {
+          startedResult.setFailure( e );
+        }
+      } );
   }
 }

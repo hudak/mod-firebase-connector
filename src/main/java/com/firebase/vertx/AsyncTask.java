@@ -1,28 +1,23 @@
 package com.firebase.vertx;
 
+import com.darylteo.vertx.promises.java.Promise;
 import org.vertx.java.core.Context;
-import org.vertx.java.core.Future;
 import org.vertx.java.core.VoidHandler;
-import org.vertx.java.core.impl.DefaultFutureResult;
 
 /**
  * @author nhudak
  */
 public abstract class AsyncTask<T> {
 
-  private final Future<T> future = new DefaultFutureResult<>();
-
-  public final void runOnContext( final Context context ) {
+  public final Promise<T> runOnContext( final Context context ) {
+    final Promise<T> promise = new Promise<>();
     context.runOnContext( new VoidHandler() {
       @Override protected void handle() {
-        execute( context, future );
+        execute( context, promise );
       }
     } );
+    return promise;
   }
 
-  abstract void execute( Context context, Future<T> future );
-
-  public Future<T> getFuture() {
-    return future;
-  }
+  abstract void execute( Context context, Promise<T> future );
 }
