@@ -13,7 +13,11 @@ public abstract class AsyncTask<T> {
     final Promise<T> promise = new Promise<>();
     context.runOnContext( new VoidHandler() {
       @Override protected void handle() {
-        execute( context, promise );
+        try {
+          execute( context, promise );
+        } catch ( Exception e ) {
+          promise.reject( e );
+        }
       }
     } );
     return promise;
