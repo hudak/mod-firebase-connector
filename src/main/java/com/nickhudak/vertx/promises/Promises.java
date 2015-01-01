@@ -51,7 +51,8 @@ public class Promises {
 
   public static <T> Promise<T> rejected( Throwable reason ) {
     Promise<T> promise = new Promise<>();
-    promise.reject( reason );
+    //Fail callbacks may not be reached if reason is an Error, therefore wrap in an Exception if necessary
+    promise.reject( reason instanceof Exception ? reason : new Exception( reason ) );
     return promise;
   }
 
