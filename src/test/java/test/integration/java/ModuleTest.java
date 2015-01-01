@@ -3,11 +3,10 @@ package test.integration.java;
 import com.darylteo.vertx.promises.java.Promise;
 import com.darylteo.vertx.promises.java.functions.PromiseAction;
 import com.darylteo.vertx.promises.java.functions.RepromiseFunction;
-import com.firebase.vertx.FirebaseVerticle;
+import com.nickhudak.vertx.promises.Promises;
 import org.junit.Test;
 import org.vertx.java.core.AsyncResult;
 import org.vertx.java.core.AsyncResultHandler;
-import org.vertx.java.core.Handler;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.json.JsonObject;
@@ -58,27 +57,30 @@ public class ModuleTest extends TestVerticle {
     JsonObject query = new JsonObject().putString( "action", "put" ).putObject( "value", value );
     final EventBus eventBus = vertx.eventBus();
     Promise<Message<JsonObject>> promise = new Promise<>();
+    container.logger().info( MessageFormat.format( "send {0}", query ) );
     eventBus.send( ADDRESS, query, promise );
     promise.
-      then( new RepromiseFunction<Message<JsonObject>, Message<JsonObject>>() {
-        @Override public Promise<Message<JsonObject>> call( Message<JsonObject> message ) {
+      then( Promises.<JsonObject>unwrapMessage() ).
+      then( new RepromiseFunction<JsonObject, Message<JsonObject>>() {
+        @Override public Promise<Message<JsonObject>> call( JsonObject response ) {
+          container.logger().info( MessageFormat.format( "response {0}", response ) );
           // Verify put
-          JsonObject response = message.body();
-          container.logger().info( response );
           assertTrue( response.getString( "cause" ), response.getBoolean( "success" ) );
           assertEquals( value, response.getObject( "snapshot" ) );
 
           // Send Query
           Promise<Message<JsonObject>> promise = new Promise<>();
-          eventBus.send( ADDRESS, "myContainer/myValue", promise );
+          String query = "myContainer/myValue";
+          container.logger().info( MessageFormat.format( "send {0}", query ) );
+          eventBus.send( ADDRESS, query, promise );
           return promise;
         }
       } ).
-      then( new PromiseAction<Message<JsonObject>>() {
-        @Override public void call( Message<JsonObject> message ) {
+      then( Promises.<JsonObject>unwrapMessage() ).
+      then( new PromiseAction<JsonObject>() {
+        @Override public void call( JsonObject response ) {
+          container.logger().info( MessageFormat.format( "response {0}", response ) );
           // Verify get
-          JsonObject response = message.body();
-          container.logger().info( response );
           assertTrue( response.getString( "cause" ), response.getBoolean( "success" ) );
           // Verify snapshot
           assertEquals( 42, response.getInteger( "snapshot" ).intValue() );

@@ -3,16 +3,20 @@ package test.unit.java;
 import com.darylteo.vertx.promises.java.Promise;
 import com.darylteo.vertx.promises.java.functions.PromiseAction;
 import com.darylteo.vertx.promises.java.functions.PromiseFunction;
-import com.darylteo.vertx.promises.java.functions.RepromiseFunction;
 import com.nickhudak.vertx.promises.Promises;
 import org.junit.Before;
 import org.junit.Test;
+import org.vertx.java.core.AsyncResult;
+import org.vertx.java.core.impl.DefaultFutureResult;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class PromisesTest {
 
@@ -28,22 +32,10 @@ public class PromisesTest {
     Promise<Integer> intPromise = new Promise<>();
     Promise<Long> longPromise = new Promise<>();
     Promise<Double> doublePromise = new Promise<>();
-    Collection<Promise<Number>>  list = Arrays.asList(
-      intPromise.then( new PromiseFunction<Integer, Number>() {
-        @Override public Number call( Integer number ) {
-          return number;
-        }
-      } ),
-      longPromise.then( new PromiseFunction<Long, Number>() {
-        @Override public Number call( Long number ) {
-          return number;
-        }
-      } ),
-      doublePromise.then( new PromiseFunction<Double, Number>() {
-        @Override public Number call( Double number ) {
-          return number;
-        }
-      } )
+    Collection<Promise<Number>> list = Arrays.asList(
+      intPromise.then( Promises.<Integer, Number>castTo( Number.class ) ),
+      longPromise.then( Promises.<Long, Number>castTo( Number.class ) ),
+      doublePromise.then( Promises.<Double, Number>castTo( Number.class ) )
     );
     Promise<List<Number>> all = Promises.all( list );
 
@@ -89,6 +81,35 @@ public class PromisesTest {
       }
     } );
 
+    assertTrue( returnChecked[0] );
+  }
+
+  @Test
+  public void testUnwrapAsyncResult() throws Exception {
+    final DefaultFutureResult<String> future = new DefaultFutureResult<>( "value" );
+    final Promise<AsyncResult<String>> promise = Promises.<AsyncResult<String>>fulfilled( future );
+    final Exception cause = new Exception( "cause" );
+
+    promise.
+      then( Promises.<String>unwrapAsyncResult() ).
+      then( new PromiseFunction<String, AsyncResult<Number>>() {
+        @Override public AsyncResult<Number> call( String s ) {
+          assertEquals( "value", s );
+          return new DefaultFutureResult<>( cause );
+        }
+      } ).
+      then( Promises.<Number>unwrapAsyncResult() ).
+      then( new PromiseAction<Number>() {
+        @Override public void call( Number number ) {
+          fail( "Unreachable" );
+        }
+      } ).
+      fail( new PromiseAction<Exception>() {
+        @Override public void call( Exception e ) {
+          assertSame( cause, e );
+          returnChecked[0] = true;
+        }
+      } );
     assertTrue( returnChecked[0] );
   }
 }

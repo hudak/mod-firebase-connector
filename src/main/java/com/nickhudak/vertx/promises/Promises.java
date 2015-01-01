@@ -2,7 +2,11 @@ package com.nickhudak.vertx.promises;
 
 import com.darylteo.vertx.promises.java.Promise;
 import com.darylteo.vertx.promises.java.functions.PromiseAction;
+import com.darylteo.vertx.promises.java.functions.PromiseFunction;
+import com.darylteo.vertx.promises.java.functions.RepromiseFunction;
 import com.google.common.collect.Lists;
+import org.vertx.java.core.AsyncResult;
+import org.vertx.java.core.eventbus.Message;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -33,7 +37,7 @@ public class Promises {
         promiseAll.reject( e );
       }
     };
-    for( Promise<T> promise : promises ) {
+    for ( Promise<T> promise : promises ) {
       promise.then( somethingFinished ).fail( somethingFailed );
     }
     return promiseAll;
@@ -45,9 +49,41 @@ public class Promises {
     return promise;
   }
 
-  public static <T> Promise<T> rejected( Throwable reason  ) {
+  public static <T> Promise<T> rejected( Throwable reason ) {
     Promise<T> promise = new Promise<>();
     promise.reject( reason );
     return promise;
+  }
+
+  public static <T> PromiseFunction<Message<T>, T> unwrapMessage() {
+    return new PromiseFunction<Message<T>, T>() {
+      @Override public T call( Message<T> message ) {
+        return message.body();
+      }
+    };
+  }
+
+  public static <T> RepromiseFunction<AsyncResult<T>, T> unwrapAsyncResult() {
+    return new RepromiseFunction<AsyncResult<T>, T>() {
+      @Override public Promise<T> call( AsyncResult<T> asyncResult ) {
+        if ( asyncResult.succeeded() ) {
+          return fulfilled( asyncResult.result() );
+        } else {
+          return rejected( asyncResult.cause() );
+        }
+      }
+    };
+  }
+
+  public static <I,O> RepromiseFunction<I, O> castTo( final Class<O> type ) {
+    return new RepromiseFunction<I, O>() {
+      @Override public Promise<O> call( I o ) {
+        try {
+          return fulfilled( type.cast( o ) );
+        } catch ( ClassCastException e ) {
+          return rejected( e );
+        }
+      }
+    };
   }
 }
