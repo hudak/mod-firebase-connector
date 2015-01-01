@@ -64,7 +64,8 @@ test {
   include 'org/foo/**'
   exclude 'org/boo/**'
   */
-
+  systemProperty "test.integration.ref", System.getProperty('test.integration.ref')
+  systemProperty "test.integration.secret", System.getProperty('test.integration.secret')
 }
 
 /*
