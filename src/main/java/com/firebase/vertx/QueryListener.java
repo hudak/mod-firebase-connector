@@ -14,7 +14,7 @@ import java.text.MessageFormat;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.nickhudak.vertx.json.json.ToJson.toJson;
+import static com.nickhudak.vertx.json.ToJson.toJson;
 
 /**
  * @author nhudak

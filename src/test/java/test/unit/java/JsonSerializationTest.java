@@ -1,7 +1,7 @@
 package test.unit.java;
 
-import com.nickhudak.vertx.json.json.FromJson;
-import com.nickhudak.vertx.json.json.ToJson;
+import com.nickhudak.vertx.json.FromJson;
+import com.nickhudak.vertx.json.ToJson;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;

@@ -4,7 +4,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.Maps;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
-import rx.functions.Func1;
 
 import java.util.List;
 import java.util.Map;
