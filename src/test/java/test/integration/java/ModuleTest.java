@@ -1,13 +1,11 @@
 package test.integration.java;
 
 import com.darylteo.vertx.promises.java.Promise;
-import com.darylteo.vertx.promises.java.functions.FinallyAction;
 import com.darylteo.vertx.promises.java.functions.PromiseAction;
 import com.darylteo.vertx.promises.java.functions.RepromiseFunction;
 import com.nickhudak.vertx.promises.Promises;
 import org.junit.Test;
 import org.vertx.java.core.AsyncResult;
-import org.vertx.java.core.AsyncResultHandler;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
 import org.vertx.java.core.json.JsonObject;
@@ -23,40 +21,70 @@ import static org.vertx.testtools.VertxAssert.*;
 public class ModuleTest extends TestVerticle {
 
   public static final String ADDRESS = "test.integration";
-  JsonObject testConfig;
+  private EventBus eventBus;
 
   @Override public void start() {
     // Make sure we call initialize() - this sets up the assert stuff so assert functionality works correctly
     initialize();
+    eventBus = vertx.eventBus();
     // Deploy the module - the System property `vertx.modulename` will contain the name of the module so you
     // don't have to hardecode it in your tests
     String ref, secret;
     assertNotNull( "test.integration.ref not set", ref = System.getProperty( "test.integration.ref" ) );
     assertNotNull( "test.integration.secret not set", secret = System.getProperty( "test.integration.secret" ) );
-    testConfig = new JsonObject().
+    JsonObject testConfig = new JsonObject().
       putString( "ref", ref ).
       putString( "auth", secret ).
       putString( "address", ADDRESS );
     container.logger().info( testConfig.copy().putString( "auth", "*****" ) );
-    container.deployModule( System.getProperty( "vertx.modulename" ), testConfig, new AsyncResultHandler<String>() {
-      @Override
-      public void handle( AsyncResult<String> asyncResult ) {
-        // Deployment is asynchronous and this this handler will be called when it's complete (or failed)
-        if ( asyncResult.failed() ) {
-          fail( MessageFormat.format( "module failed to deploy: {0}", asyncResult.cause() ) );
+
+    // Start Module
+    Promise<AsyncResult<String>> start = new Promise<>();
+    container.deployModule( System.getProperty( "vertx.modulename" ), testConfig, start );
+    start.
+      then( Promises.<String>unwrapAsyncResult() ).
+      then( new RepromiseFunction<String, Message<JsonObject>>() {
+        @Override public Promise<Message<JsonObject>> call( String deploymentId ) {
+          assertNotNull( "deploymentID should not be null", deploymentId );
+
+          // Reset container
+          JsonObject myContainer = new JsonObject().putObject( "myContainer", new JsonObject() );
+          JsonObject query = new JsonObject().
+            putString( "action", "put" ).
+            putObject( "value", myContainer );
+
+          Promise<Message<JsonObject>> promise = new Promise<>();
+          container.logger().info( MessageFormat.format( "send {0}", query ) );
+          eventBus.send( ADDRESS, query, promise );
+          return promise;
         }
-        assertTrue( asyncResult.succeeded() );
-        assertNotNull( "deploymentID should not be null", asyncResult.result() );
-        // If deployed correctly then start the tests!
-        startTests();
-      }
-    } );
+      } ).
+      then( Promises.<JsonObject>unwrapMessage() ).
+      then( new RepromiseFunction<JsonObject, Void>() {
+        @Override public Promise<Void> call( JsonObject response ) {
+          // If deployed correctly then start the tests!
+          if ( response.getBoolean( "success" ) ) {
+            startTests();
+            return Promises.fulfilled( null );
+          } else {
+            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
+          }
+        }
+      } ).
+      fail( new PromiseAction<Exception>() {
+        @Override public void call( Exception e ) {
+          fail( e.getMessage() );
+        }
+      } );
   }
 
   @Test public void testSetValue() {
-    final JsonObject value = new JsonObject().putObject( "myContainer", new JsonObject().putNumber( "myValue", 42 ) );
-    JsonObject query = new JsonObject().putString( "action", "put" ).putObject( "value", value );
-    final EventBus eventBus = vertx.eventBus();
+    final JsonObject value = new JsonObject().putNumber( "myValue", 42 );
+    JsonObject query = new JsonObject().
+      putString( "action", "put" ).
+      putString( "child", "myContainer" ).
+      putObject( "value", value );
+
     Promise<Message<JsonObject>> promise = new Promise<>();
     container.logger().info( MessageFormat.format( "send {0}", query ) );
     eventBus.send( ADDRESS, query, promise );
@@ -80,17 +108,13 @@ public class ModuleTest extends TestVerticle {
         }
       } ).
       then( Promises.<JsonObject>unwrapMessage() ).
-      then( new RepromiseFunction<JsonObject, Void>() {
-        @Override public Promise<Void> call( JsonObject response ) {
+      then( new PromiseAction<JsonObject>() {
+        @Override public void call( JsonObject response ) {
           container.logger().info( MessageFormat.format( "response {0}", response ) );
-          // Verify get
-          if ( !response.getBoolean( "success" ) ) {
-            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
-          }
+          assertTrue( response.getString( "cause" ), response.getBoolean( "success" ) );
           // Verify snapshot
           assertEquals( 42, response.getInteger( "snapshot" ).intValue() );
           testComplete();
-          return Promises.fulfilled( null );
         }
       } ).
       fail( new PromiseAction<Exception>() {
@@ -101,58 +125,32 @@ public class ModuleTest extends TestVerticle {
   }
 
   @Test public void testPushValue() {
-    JsonObject myContainer = new JsonObject().putObject( "myContainer", new JsonObject() );
-    final String[] idRef = new String[1];
     final JsonObject value = new JsonObject().putString( "myValue", "some such" ).putNumber( "myNumber", 42 );
-    JsonObject query = new JsonObject().putString( "action", "put" ).putObject( "value", myContainer );
-    final EventBus eventBus = vertx.eventBus();
+    // Send Push
     Promise<Message<JsonObject>> promise = new Promise<>();
-    // Prepare container
+    JsonObject query = new JsonObject().
+      putString( "action", "push" ).
+      putString( "child", "myContainer" ).
+      putObject( "value", value );
     container.logger().info( MessageFormat.format( "send {0}", query ) );
     eventBus.send( ADDRESS, query, promise );
-    final Promise<Void> test = promise.
+    promise.
       then( Promises.<JsonObject>unwrapMessage() ).
-      then( new RepromiseFunction<JsonObject, Message<JsonObject>>() {
-        @Override public Promise<Message<JsonObject>> call( JsonObject response ) {
+      then( new PromiseAction<JsonObject>() {
+        @Override public void call( JsonObject response ) {
           container.logger().info( MessageFormat.format( "response {0}", response ) );
-          if ( !response.getBoolean( "success" ) ) {
-            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
-          }
+          assertTrue( response.getString( "cause" ), response.getBoolean( "success" ) );
+          // Verify push
+          assertNotNull( response.getString( "id" ) );
+          assertEquals( value, response.getObject( "snapshot" ) );
 
-          // Send Push
-          Promise<Message<JsonObject>> promise = new Promise<>();
-          JsonObject query = new JsonObject().
-            putString( "action", "push" ).
-            putString( "child", "myContainer" ).
-            putObject( "value", value );
-          container.logger().info( MessageFormat.format( "send {0}", query ) );
-          eventBus.send( ADDRESS, query, promise );
-          return promise;
+          testComplete();
         }
       } ).
-      then( Promises.<JsonObject>unwrapMessage() ).
-      then( new RepromiseFunction<JsonObject, Void>() {
-        @Override public Promise<Void> call( JsonObject response ) {
-          container.logger().info( MessageFormat.format( "response {0}", response ) );
-          if ( !response.getBoolean( "success" ) ) {
-            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
-          }
-          // Verify push
-          assertEquals( value, response.getObject( "snapshot" ) );
-          assertNotNull( idRef[0] = response.getString( "id" ) );
-
-          return Promises.fulfilled( null );
+      fail( new PromiseAction<Exception>() {
+        @Override public void call( Exception e ) {
+          fail( e.toString() );
         }
       } );
-
-    test.fail( new PromiseAction<Exception>() {
-      @Override public void call( Exception e ) {
-        fail( e.toString() );
-      }
-    } ).fin( new FinallyAction() {
-      @Override public void call() {
-        testComplete();
-      }
-    } );
   }
 }
