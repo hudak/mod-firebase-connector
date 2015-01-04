@@ -72,6 +72,7 @@ public class QueryListener extends AsyncTask<Void> {
       } else {
         target = ref;
       }
+      Object value = requestMap.get( "value" );
 
       String actionType = Objects.toString( requestMap.get( "action" ), "get" );
       switch ( actionType ) {
@@ -80,15 +81,22 @@ public class QueryListener extends AsyncTask<Void> {
           break;
         case "put":
           if ( requestMap.containsKey( "value" ) ) {
-            action = QueryAction.put( target, requestMap.get( "value" ) );
+            action = QueryAction.put( target, value );
           } else {
             getLogger().error( "Value to put not specified" );
+          }
+          break;
+        case "updateChildren":
+          if ( value instanceof Map ) {
+            action = QueryAction.updateChildren( target, ( (JsonObject) request ).getObject( "value" ).toMap() );
+          } else {
+            getLogger().error( MessageFormat.format( "Unable to update children with value {0}", value ) );
           }
           break;
         case "push":
           target = target.push();
           if ( requestMap.containsKey( "value" ) ) {
-            action = QueryAction.put( target, requestMap.get( "value" ) );
+            action = QueryAction.put( target, value );
           } else {
             action = QueryAction.get( target );
           }

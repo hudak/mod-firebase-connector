@@ -78,8 +78,10 @@ public class ModuleTest extends TestVerticle {
       } );
   }
 
-  @Test public void testSetValue() {
+  @Test public void testSetAndUpdateValue() {
     final JsonObject value = new JsonObject().putNumber( "myValue", 42 );
+    final JsonObject update = new JsonObject().putString( "myId", "xkcd" );
+    final JsonObject finalValue = new JsonObject().mergeIn( value ).mergeIn( update );
     JsonObject query = new JsonObject().
       putString( "action", "put" ).
       putString( "child", "myContainer" ).
@@ -98,6 +100,27 @@ public class ModuleTest extends TestVerticle {
             return Promises.rejected( new Exception( response.getString( "cause" ) ) );
           }
           assertEquals( value, response.getObject( "snapshot" ) );
+
+          // Update value
+          JsonObject query = new JsonObject().
+            putString( "action", "updateChildren" ).
+            putString( "child", "myContainer" ).
+            putObject( "value", update );
+          Promise<Message<JsonObject>> promise = new Promise<>();
+          container.logger().info( MessageFormat.format( "send {0}", query ) );
+          eventBus.send( ADDRESS, query, promise );
+          return promise;
+        }
+      } ).
+      then( Promises.<JsonObject>unwrapMessage() ).
+      then( new RepromiseFunction<JsonObject, Message<JsonObject>>() {
+        @Override public Promise<Message<JsonObject>> call( JsonObject response ) {
+          container.logger().info( MessageFormat.format( "response {0}", response ) );
+          if ( !response.getBoolean( "success" ) ) {
+            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
+          }
+          // Verify update
+          assertEquals( finalValue, response.getObject( "snapshot" ) );
 
           // Send Query
           Promise<Message<JsonObject>> promise = new Promise<>();

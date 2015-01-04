@@ -7,6 +7,8 @@ import com.firebase.client.FirebaseError;
 import com.firebase.client.ValueEventListener;
 import com.nickhudak.vertx.promises.AsyncTask;
 
+import java.util.Map;
+
 /**
 * @author nhudak
 */
@@ -37,6 +39,24 @@ abstract class QueryAction extends AsyncTask<QueryAction.Response> {
           }
           @Override public void onCancelled( FirebaseError firebaseError ) {
             future.reject( firebaseError.toException() );
+          }
+        } );
+      }
+    };
+  }
+
+  public static QueryAction updateChildren( final Firebase ref, final Map<String, Object> value ) {
+    return new QueryAction() {
+      QueryAction self = this;
+      @Override protected void execute( final Promise<Response> future ) {
+        ref.updateChildren( value, new Firebase.CompletionListener() {
+          @Override public void onComplete( FirebaseError firebaseError, Firebase firebase ) {
+            if ( firebaseError == null ) {
+              // Get snapshot at reference
+              future.become( get( firebase ).runOnContext( self ) );
+            } else {
+              future.reject( firebaseError.toException() );
+            }
           }
         } );
       }
