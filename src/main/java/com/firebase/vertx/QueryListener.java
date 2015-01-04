@@ -101,6 +101,9 @@ public class QueryListener extends AsyncTask<Void> {
             action = QueryAction.get( target );
           }
           break;
+        case "remove":
+          action = QueryAction.remove( target );
+          break;
         default:
           getLogger().error( MessageFormat.format( "Action not recognized: {0}", actionType ) );
       }

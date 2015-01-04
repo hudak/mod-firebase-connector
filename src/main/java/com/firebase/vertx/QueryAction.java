@@ -63,6 +63,22 @@ abstract class QueryAction extends AsyncTask<QueryAction.Response> {
     };
   }
 
+  public static QueryAction remove( final Firebase ref ) {
+    return new QueryAction() {
+      @Override protected void execute( final Promise<Response> future ) {
+        ref.removeValue( new Firebase.CompletionListener() {
+          @Override public void onComplete( FirebaseError firebaseError, Firebase firebase ) {
+            if ( firebaseError == null ) {
+              future.fulfill( new Response( firebase.getKey(), null ) );
+            } else {
+              future.reject( firebaseError.toException() );
+            }
+          }
+        } );
+      }
+    };
+  }
+
   public static class Response {
     private Response( DataSnapshot snapshot ) {
       this( snapshot.getKey(), snapshot.getValue() );
