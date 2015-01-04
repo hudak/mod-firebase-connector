@@ -1,6 +1,7 @@
 package test.integration.java;
 
 import com.darylteo.vertx.promises.java.Promise;
+import com.darylteo.vertx.promises.java.functions.FinallyAction;
 import com.darylteo.vertx.promises.java.functions.PromiseAction;
 import com.darylteo.vertx.promises.java.functions.RepromiseFunction;
 import com.nickhudak.vertx.promises.Promises;
@@ -52,7 +53,7 @@ public class ModuleTest extends TestVerticle {
     } );
   }
 
-  @Test public void insertAndQuery() {
+  @Test public void testSetValue() {
     final JsonObject value = new JsonObject().putObject( "myContainer", new JsonObject().putNumber( "myValue", 42 ) );
     JsonObject query = new JsonObject().putString( "action", "put" ).putObject( "value", value );
     final EventBus eventBus = vertx.eventBus();
@@ -65,7 +66,9 @@ public class ModuleTest extends TestVerticle {
         @Override public Promise<Message<JsonObject>> call( JsonObject response ) {
           container.logger().info( MessageFormat.format( "response {0}", response ) );
           // Verify put
-          assertTrue( response.getString( "cause" ), response.getBoolean( "success" ) );
+          if ( !response.getBoolean( "success" ) ) {
+            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
+          }
           assertEquals( value, response.getObject( "snapshot" ) );
 
           // Send Query
@@ -77,14 +80,17 @@ public class ModuleTest extends TestVerticle {
         }
       } ).
       then( Promises.<JsonObject>unwrapMessage() ).
-      then( new PromiseAction<JsonObject>() {
-        @Override public void call( JsonObject response ) {
+      then( new RepromiseFunction<JsonObject, Void>() {
+        @Override public Promise<Void> call( JsonObject response ) {
           container.logger().info( MessageFormat.format( "response {0}", response ) );
           // Verify get
-          assertTrue( response.getString( "cause" ), response.getBoolean( "success" ) );
+          if ( !response.getBoolean( "success" ) ) {
+            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
+          }
           // Verify snapshot
           assertEquals( 42, response.getInteger( "snapshot" ).intValue() );
           testComplete();
+          return Promises.fulfilled( null );
         }
       } ).
       fail( new PromiseAction<Exception>() {
@@ -92,5 +98,61 @@ public class ModuleTest extends TestVerticle {
           fail( e.getMessage() );
         }
       } );
+  }
+
+  @Test public void testPushValue() {
+    JsonObject myContainer = new JsonObject().putObject( "myContainer", new JsonObject() );
+    final String[] idRef = new String[1];
+    final JsonObject value = new JsonObject().putString( "myValue", "some such" ).putNumber( "myNumber", 42 );
+    JsonObject query = new JsonObject().putString( "action", "put" ).putObject( "value", myContainer );
+    final EventBus eventBus = vertx.eventBus();
+    Promise<Message<JsonObject>> promise = new Promise<>();
+    // Prepare container
+    container.logger().info( MessageFormat.format( "send {0}", query ) );
+    eventBus.send( ADDRESS, query, promise );
+    final Promise<Void> test = promise.
+      then( Promises.<JsonObject>unwrapMessage() ).
+      then( new RepromiseFunction<JsonObject, Message<JsonObject>>() {
+        @Override public Promise<Message<JsonObject>> call( JsonObject response ) {
+          container.logger().info( MessageFormat.format( "response {0}", response ) );
+          if ( !response.getBoolean( "success" ) ) {
+            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
+          }
+
+          // Send Push
+          Promise<Message<JsonObject>> promise = new Promise<>();
+          JsonObject query = new JsonObject().
+            putString( "action", "push" ).
+            putString( "child", "myContainer" ).
+            putObject( "value", value );
+          container.logger().info( MessageFormat.format( "send {0}", query ) );
+          eventBus.send( ADDRESS, query, promise );
+          return promise;
+        }
+      } ).
+      then( Promises.<JsonObject>unwrapMessage() ).
+      then( new RepromiseFunction<JsonObject, Void>() {
+        @Override public Promise<Void> call( JsonObject response ) {
+          container.logger().info( MessageFormat.format( "response {0}", response ) );
+          if ( !response.getBoolean( "success" ) ) {
+            return Promises.rejected( new Exception( response.getString( "cause" ) ) );
+          }
+          // Verify push
+          assertEquals( value, response.getObject( "snapshot" ) );
+          assertNotNull( idRef[0] = response.getString( "id" ) );
+
+          return Promises.fulfilled( null );
+        }
+      } );
+
+    test.fail( new PromiseAction<Exception>() {
+      @Override public void call( Exception e ) {
+        fail( e.toString() );
+      }
+    } ).fin( new FinallyAction() {
+      @Override public void call() {
+        testComplete();
+      }
+    } );
   }
 }

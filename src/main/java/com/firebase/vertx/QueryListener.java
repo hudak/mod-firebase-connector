@@ -81,6 +81,16 @@ public class QueryListener extends AsyncTask<Void> {
         case "put":
           if ( requestMap.containsKey( "value" ) ) {
             action = QueryAction.put( target, requestMap.get( "value" ) );
+          } else {
+            getLogger().error( "Value to put not specified" );
+          }
+          break;
+        case "push":
+          target = target.push();
+          if ( requestMap.containsKey( "value" ) ) {
+            action = QueryAction.put( target, requestMap.get( "value" ) );
+          } else {
+            action = QueryAction.get( target );
           }
           break;
         default:
