@@ -20,6 +20,10 @@ import java.util.List;
  * @author nhudak
  */
 public class FirebaseVerticle extends Verticle {
+
+  private EventListener eventListener;
+  private Firebase ref;
+
   @Override
   public void start( final Future<Void> startedResult ) {
     final JsonObject config = container.config();
@@ -29,7 +33,7 @@ public class FirebaseVerticle extends Verticle {
       return;
     }
 
-    final Firebase ref = new VertxFirebase( this, config.getString( "ref" ) );
+    ref = new VertxFirebase( this, config.getString( "ref" ) );
 
     Promise<AuthData> authPromise;
     if ( config.containsField( "auth" ) ) {
@@ -44,9 +48,10 @@ public class FirebaseVerticle extends Verticle {
           container.logger().debug( MessageFormat.format( "authData: {0}", authData ) );
           List<Promise<Void>> startup = Lists.newArrayList();
           if ( config.containsField( "address" ) ) {
-            String address = config.getValue( "address" ).toString();
+            String address = config.getString( "address" );
             startup.add( new QueryListener( ref, address ).runOnContext( FirebaseVerticle.this ) );
           }
+          eventListener = EventListener.create( FirebaseVerticle.this ).register( ref );
 
           return Promises.all( startup );
         }
@@ -63,4 +68,11 @@ public class FirebaseVerticle extends Verticle {
         }
       } );
   }
+
+  @Override public void stop() {
+    if ( eventListener != null ) {
+      eventListener.unregister( ref );
+    }
+  }
+
 }
