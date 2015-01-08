@@ -5,7 +5,7 @@ import com.darylteo.vertx.promises.java.functions.PromiseAction;
 import com.darylteo.vertx.promises.java.functions.RepromiseFunction;
 import com.firebase.client.AuthData;
 import com.firebase.client.Firebase;
-import com.firebase.client.VertxFirebase;
+import com.firebase.client.VertxFirebaseFactory;
 import com.google.common.collect.Lists;
 import com.nickhudak.vertx.promises.Promises;
 import org.vertx.java.core.Future;
@@ -33,7 +33,7 @@ public class FirebaseVerticle extends Verticle {
       return;
     }
 
-    ref = new VertxFirebase( this, config.getString( "ref" ) );
+    ref = new VertxFirebaseFactory( this ).createRef( config.getString( "ref" ) );
 
     Promise<AuthData> authPromise;
     if ( config.containsField( "auth" ) ) {

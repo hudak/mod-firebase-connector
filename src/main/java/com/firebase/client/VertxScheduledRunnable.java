@@ -13,13 +13,13 @@ import java.util.concurrent.TimeoutException;
 /**
  * @author nhudak
  */
-public class VertxScheduledFuture implements RunnableScheduledFuture<Void> {
+class VertxScheduledRunnable implements RunnableScheduledFuture<Void> {
   private final Vertx vertx;
   private final long delay;
   private volatile Long timer = null;
   private final FutureTask<Void> task;
 
-  public VertxScheduledFuture( Vertx vertx, long delay, Runnable runnable ) {
+  public VertxScheduledRunnable( Vertx vertx, long delay, Runnable runnable ) {
     this.vertx = vertx;
     this.delay = delay;
     this.task = new FutureTask<>( runnable, null );

@@ -20,7 +20,7 @@ import static com.nickhudak.vertx.json.ToJson.toJson;
 /**
  * @author nhudak
  */
-public class EventListener implements ValueEventListener, ChildEventListener {
+class EventListener implements ValueEventListener, ChildEventListener {
   private final EventBus eventBus;
   public final Map<String, String> addressMap;
 
